@@ -1,0 +1,48 @@
+{
+    "name": "@supercat1337/store2-deep",
+    "version": "0.1.0",
+    "description": "Deep reactivity for @supercat1337/store2 — mutable nested state with granular updates",
+    "type": "module",
+    "main": "src/index.js",
+    "types": "src/types.d.ts",
+    "exports": {
+        ".": {
+            "types": "./src/types.d.ts",
+            "import": "./src/index.js",
+            "default": "./src/index.js"
+        }
+    },
+    "files": [
+        "src",
+        "README.md",
+        "AI_DOCS.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "test": "node --test tests/*.test.js",
+        "test:coverage": "c8 node --test tests/*.test.js",
+        "test:coverage:report": "c8 --reporter=html --reporter=text node --test tests/*.test.js"
+    },
+    "peerDependencies": {
+        "@supercat1337/store2": "^2.0.7"
+    },
+    "devDependencies": {
+        "@supercat1337/store2": "^2.0.7",
+        "c8": "^12.0.0"
+    },
+    "keywords": [
+        "store2",
+        "reactive",
+        "deep",
+        "proxy",
+        "state",
+        "mobx-like"
+    ],
+    "author": "Albert Bazaleev",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/supercat1337/store2-deep"
+    },
+    "homepage": "https://github.com/supercat1337/store2-deep#readme"
+}
