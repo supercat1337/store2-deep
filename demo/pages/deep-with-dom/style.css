@@ -1,0 +1,40 @@
+/* Deep with DOM – form styling */
+
+.field-group {
+    margin-bottom: 0.75rem;
+}
+
+.field-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.field-group input,
+.field-group select {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.4rem;
+    font-size: 0.95rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+.field-group.checkbox-group label {
+    font-weight: normal;
+}
+
+.field-group.checkbox-group input[type='checkbox'] {
+    width: auto;
+    margin-right: 0.5rem;
+}
+
+#profile-preview {
+    background: #f1f5f9;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    overflow: auto;
+    max-height: 300px;
+}

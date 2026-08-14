@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Deep + store2-dom – store2-deep</title>
+        <link rel="stylesheet" href="../../styles/demo.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h2>Deep + store2-dom</h2>
+            <p>
+                Full integration: <code>deepReactive</code> + <code>computed</code> +
+                <code>bindToProperty</code> + events.
+            </p>
+
+            <section>
+                <div class="field-group">
+                    <label
+                        >Name:
+                        <input type="text" id="name-input" />
+                    </label>
+                </div>
+                <div class="field-group">
+                    <label
+                        >Email:
+                        <input type="email" id="email-input" />
+                    </label>
+                </div>
+                <div class="field-group">
+                    <label
+                        >Role:
+                        <select id="role-select">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                            <option value="guest">Guest</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="field-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="active-checkbox" />
+                        Active
+                    </label>
+                </div>
+            </section>
+
+            <section>
+                <h3>Profile preview</h3>
+                <pre id="profile-preview"></pre>
+            </section>
+
+            <p><a href="../../index.html">← Back</a></p>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@supercat1337/store2": "../../../node_modules/@supercat1337/store2/dist/store2.esm.bundle.min.js",
+                    "@supercat1337/store2-dom": "../../../node_modules/@supercat1337/store2-dom/dist/store2-dom.esm.js",
+                    "@supercat1337/store2-deep": "../../../dist/store2-deep.esm.js"
+                }
+            }
+        </script>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

@@ -1,34 +1,51 @@
 {
     "name": "@supercat1337/store2-deep",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "description": "Deep reactivity for @supercat1337/store2 — mutable nested state with granular updates",
     "type": "module",
-    "main": "src/index.js",
-    "types": "src/types.d.ts",
+    "main": "dist/store2-deep.esm.js",
+    "types": "dist/types.d.ts",
     "exports": {
         ".": {
-            "types": "./src/types.d.ts",
-            "import": "./src/index.js",
-            "default": "./src/index.js"
+            "types": "./dist/types.d.ts",
+            "import": "./dist/store2-deep.esm.js",
+            "default": "./dist/store2-deep.esm.js"
         }
     },
     "files": [
-        "src",
+        "dist/",
         "README.md",
         "AI_DOCS.md",
         "LICENSE"
     ],
+    "sideEffects": false,
     "scripts": {
-        "test": "node --test tests/*.test.js",
-        "test:coverage": "c8 node --test tests/*.test.js",
-        "test:coverage:report": "c8 --reporter=html --reporter=text node --test tests/*.test.js"
+        "test": "c8 ava",
+        "clean": "shx rm -rf ./dist && shx mkdir ./dist",
+        "build_esm": "rollup ./src/index.js --file ./dist/store2-deep.esm.js --format es",
+        "gen_types": "npx tsc --project my.tsconfig.types.json",
+        "bundle_types": "node scripts/bundle-types.js",
+        "build": "npm run clean && npm run build_esm && npm run gen_types && npm run bundle_types && shx rm -rf dist/types-temp",
+        "lint": "eslint src/ tests/ scripts/",
+        "lint_fix": "npm run lint -- --fix"
     },
     "peerDependencies": {
-        "@supercat1337/store2": "^2.0.7"
+        "@supercat1337/store2": "^2.0.8"
     },
     "devDependencies": {
-        "@supercat1337/store2": "^2.0.7",
-        "c8": "^12.0.0"
+        "@eslint/js": "^10.0.1",
+        "@supercat1337/store2": "^2.0.8",
+        "@supercat1337/store2-dom": "^1.1.0",
+        "ava": "^6.1.2",
+        "c8": "^12.0.0",
+        "eslint": "^10.8.1",
+        "eslint-plugin-jsdoc": "^63.3.3",
+        "fake-indexeddb": "^6.2.5",
+        "globals": "^17.9.0",
+        "jsdom": "^29.1.1",
+        "rollup": "^4.60.1",
+        "rollup-plugin-cleanup": "^3.2.1",
+        "shx": "^0.4.0"
     },
     "keywords": [
         "store2",
@@ -36,7 +53,13 @@
         "deep",
         "proxy",
         "state",
-        "mobx-like"
+        "mobx-like",
+        "state management",
+        "reactivity",
+        "observable",
+        "nested",
+        "granular",
+        "store2-deep"
     ],
     "author": "Albert Bazaleev",
     "license": "MIT",
@@ -44,5 +67,17 @@
         "type": "git",
         "url": "https://github.com/supercat1337/store2-deep"
     },
-    "homepage": "https://github.com/supercat1337/store2-deep#readme"
+    "homepage": "https://github.com/supercat1337/store2-deep#readme",
+    "ava": {
+        "files": [
+            "tests/**/*.test.js"
+        ],
+        "nodeArguments": [
+            "--experimental-vm-modules"
+        ],
+        "extensions": [
+            "js"
+        ],
+        "timeout": "30s"
+    }
 }

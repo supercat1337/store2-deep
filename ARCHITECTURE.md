@@ -311,7 +311,3 @@ This design ensures:
 - **Flexibility** – the `onChange` callback enables advanced use cases like persistence and debugging.
 
 For more details, refer to the source code and the AI documentation (`AI_DOCS.md`).
-
-```
-
-```

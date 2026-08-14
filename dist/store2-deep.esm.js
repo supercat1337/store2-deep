@@ -1,17 +1,210 @@
+import { atom, batch } from '@supercat1337/store2';
+
+// @ts-check
+
+
+/**
+ * Cache: raw object -> its reactive proxy.
+ * @type {WeakMap<object, object>}
+ */
+const rawToProxy = new WeakMap();
+
+/**
+ * Cache: reactive proxy -> its raw object.
+ * @type {WeakMap<object, object>}
+ */
+const proxyToRaw = new WeakMap();
+
+/**
+ * Cache: raw object -> Map(property key -> Atom).
+ * Each property of a reactive object has its own Atom.
+ * @type {WeakMap<object, Map<string|symbol, import('@supercat1337/store2').Atom<any>>>}
+ */
+const objectAtoms = new WeakMap();
+
+/**
+ * Special symbol used to track changes in the set of keys (iteration).
+ */
+const ITERATE_KEY = Symbol('iterate');
+
+/**
+ * Gets an atom for a property of a raw object. Optionally creates it.
+ * @param {object} target - The raw object.
+ * @param {string|symbol} prop - The property key.
+ * @param {boolean} [create=false] - Whether to create the atom if it doesn't exist.
+ * @returns {import('@supercat1337/store2').Atom<any> | null}
+ */
+function getAtom(target, prop, create = false) {
+    const map = objectAtoms.get(target);
+    if (!map) {
+        if (!create) {return null;}
+        const newMap = new Map();
+        objectAtoms.set(target, newMap);
+        return createAtomForProp(target, prop, newMap);
+    }
+    let atomRef = map.get(prop);
+    if (!atomRef && create) {
+        atomRef = createAtomForProp(target, prop, map);
+    }
+    return atomRef || null;
+}
+
+/**
+ * Internal: creates a new Atom for a property and stores it in the map.
+ * @param {object} target - The raw object.
+ * @param {string|symbol} prop - The property key.
+ * @param {Map<string|symbol, import('@supercat1337/store2').Atom<any>>} map - The atom map.
+ * @returns {import('@supercat1337/store2').Atom<any>}
+ */
+function createAtomForProp(target, prop, map) {
+    // @ts-ignore
+    const value = target[prop];
+    const newAtom = atom(value);
+    map.set(prop, newAtom);
+    return newAtom;
+}
+
+/**
+ * Gets the iterate atom for a target (tracks addition/removal of keys).
+ * @param {object} target - The raw object.
+ * @param {boolean} [create=false] - Whether to create the atom if it doesn't exist.
+ * @returns {import('@supercat1337/store2').Atom<any> | null}
+ */
+function getIterateAtom(target, create = false) {
+    return getAtom(target, ITERATE_KEY, create);
+}
+
+/**
+ * Notifies that the structure of an object has changed (keys added/removed).
+ * @param {object} target - The raw object.
+ */
+function notifyIterate(target) {
+    const atomRef = getIterateAtom(target, false);
+    if (atomRef) {
+        // Trigger the iterate atom by assigning a new value.
+        atomRef.value = Symbol('iterated');
+    }
+}
+
 // @ts-check
 
 /**
- * @file Proxy handler for deep reactive objects.
- * Intercepts get, set, deleteProperty, ownKeys, and has operations.
- * Each property is backed by an Atom from the core `store2` library.
- * Arrays and their mutating methods are specially handled to update all affected indices.
+ * @file Utility functions for type checking and proxying decisions.
  */
 
-import { batch } from '@supercat1337/store2';
-import { getAtom, getIterateAtom, notifyIterate, objectAtoms } from './atomRegistry.js';
-import { createDeepProxy } from './deepReactive.js';
-import { isDeepReactive } from './raw.js';
-import { isMarkedRaw, shouldProxy } from './utils.js';
+/**
+ * Checks if a value is a plain object (not an array, not a class instance, etc.)
+ * @param {any} value - The value to check.
+ * @returns {boolean} True if the value is a plain object.
+ */
+function isPlainObject(value) {
+    if (value === null || typeof value !== 'object') {return false;}
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+}
+
+/**
+ * Checks if a value is an array.
+ * @param {any} value - The value to check.
+ * @returns {boolean} True if the value is an array.
+ */
+function isArray(value) {
+    return Array.isArray(value);
+}
+
+/**
+ * Determines whether a value should be wrapped in a proxy.
+ * Only plain objects and arrays are proxied, unless marked raw.
+ * @param {any} value - The value to evaluate.
+ * @returns {boolean} True if the value should be proxied.
+ */
+function shouldProxy(value) {
+    if (value === null || typeof value !== 'object') {return false;}
+    if (isMarkedRaw(value)) {return false;}
+    return isPlainObject(value) || isArray(value);
+}
+
+/**
+ * Checks if a value has been marked as raw (should not be proxied).
+ * @param {any} value - The value to check.
+ * @returns {boolean} True if the value is marked raw.
+ */
+function isMarkedRaw(value) {
+    return value && value.__v_skip === true;
+}
+
+// @ts-check
+
+
+/**
+ * Checks if a value is a deep reactive proxy.
+ * @param {any} value - The value to check.
+ * @returns {boolean} True if the value is a deep reactive proxy.
+ */
+function isDeepReactive(value) {
+    return value !== null && typeof value === 'object' && proxyToRaw.has(value);
+}
+
+/**
+ * Returns the raw (unproxied) object from a deep reactive proxy.
+ * Recursively unwraps nested proxies and handles circular references.
+ * Safe for readonly properties, getters, and non-configurable descriptors.
+ * @param {any} proxy - The deep reactive proxy.
+ * @param {WeakSet<object>} [seen] - Internal set for circular reference detection.
+ * @returns {any} The raw object.
+ */
+function toRaw(proxy, seen = new WeakSet()) {
+    if (!isDeepReactive(proxy)) {
+        return proxy;
+    }
+    const raw = proxyToRaw.get(proxy) || proxy;
+
+    // Protect against circular references.
+    if (seen.has(raw)) {
+        return raw;
+    }
+    seen.add(raw);
+
+    // Only process plain objects and arrays.
+    if (isPlainObject(raw) || isArray(raw)) {
+        for (const key of Reflect.ownKeys(raw)) {
+            const desc = Object.getOwnPropertyDescriptor(raw, key);
+            // Only modify if the property is writable (not a getter without setter).
+            if (desc && (desc.writable || desc.set)) {
+                const value = raw[key];
+                if (isDeepReactive(value)) {
+                    try {
+                        raw[key] = toRaw(value, seen);
+                    } catch (e) {
+                        console.error(e);
+                        // If assignment fails (e.g., readonly property), skip silently.
+                    }
+                }
+            }
+        }
+    }
+    return raw;
+}
+
+/**
+ * Marks an object as raw – it will not be proxied by deepReactive.
+ * Useful for external library instances, DOM elements, etc.
+ * @param {object} target - The object to mark as raw.
+ * @returns {object} The same object with a hidden `__v_skip` property.
+ */
+function markRaw(target) {
+    if (target !== null && typeof target === 'object') {
+        Object.defineProperty(target, '__v_skip', {
+            value: true,
+            enumerable: false,
+            configurable: true,
+        });
+    }
+    return target;
+}
+
+// @ts-check
+
 
 /** Array methods that mutate the array in place. */
 const mutatingMethods = [
@@ -47,7 +240,7 @@ const proxyCache = new WeakMap();
  * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Options including onChange callback.
  * @returns {ProxyHandler<object>}
  */
-export function createHandler(path = [], options = {}) {
+function createHandler(path = [], options = {}) {
     const { onChange } = options;
 
     return {
@@ -277,3 +470,56 @@ export function createHandler(path = [], options = {}) {
         },
     };
 }
+
+// @ts-check
+
+
+/**
+ * Internal: creates a deep proxy for the given target, with caching.
+ * @param {object|any[]} target - The target object or array.
+ * @param {string[]} [path] - The path to the target (for debugging).
+ * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Options for the reactive proxy.
+ * @returns {object} The deep reactive proxy.
+ */
+function createDeepProxy(target, path = [], options = {}) {
+    if (proxyToRaw.has(target)) {
+        return target;
+    }
+    if (rawToProxy.has(target)) {
+        // @ts-ignore
+        return rawToProxy.get(target);
+    }
+
+    if (isMarkedRaw(target)) {
+        return target;
+    }
+
+    const handler = createHandler(path, options);
+    const proxy = new Proxy(target, handler);
+
+    rawToProxy.set(target, proxy);
+    proxyToRaw.set(proxy, target);
+
+    return proxy;
+}
+
+/**
+ * Public API: creates a deeply reactive proxy for a plain object or array.
+ * @template T
+ * @param {T} target - The plain object or array to wrap.
+ * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Optional configuration.
+ * @returns {T} The deep reactive proxy.
+ * @throws {Error} If the target is not a plain object or array.
+ */
+function deepReactive(target, options = {}) {
+    if (target === null || typeof target !== 'object') {
+        throw new Error('deepReactive: target must be an object or array');
+    }
+    if (!isPlainObject(target) && !isArray(target)) {
+        throw new Error('deepReactive: target must be a plain object or array');
+    }
+    // @ts-ignore
+    return createDeepProxy(target, [], options);
+}
+
+export { deepReactive, isDeepReactive, markRaw, toRaw };

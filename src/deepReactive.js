@@ -20,11 +20,10 @@ export function createDeepProxy(target, path = [], options = {}) {
         return target;
     }
     if (rawToProxy.has(target)) {
+        // @ts-ignore
         return rawToProxy.get(target);
     }
-    if (!isPlainObject(target) && !isArray(target)) {
-        return target;
-    }
+
     if (isMarkedRaw(target)) {
         return target;
     }
@@ -53,5 +52,6 @@ export function deepReactive(target, options = {}) {
     if (!isPlainObject(target) && !isArray(target)) {
         throw new Error('deepReactive: target must be a plain object or array');
     }
+    // @ts-ignore
     return createDeepProxy(target, [], options);
 }

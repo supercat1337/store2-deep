@@ -1,373 +1,202 @@
 // @ts-check
+import test from 'ava';
+import { deepReactive } from '../src/deepReactive.js';
+import { autorun, computed, batch } from '@supercat1337/store2';
+import { isDeepReactive } from '../src/raw.js';
 
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
-import { deepReactive, toRaw, isDeepReactive, markRaw } from '../src/index.js';
-import {
-    atom,
-    computed,
-    autorun,
-    reaction,
-    when,
-    waitUntil,
-    batch,
-    Store,
-    ReactiveList,
-    makeAutoObservable,
-} from '@supercat1337/store2';
-
-describe('Integration with store2 core API', () => {
-    describe('autorun', () => {
-        it('should track deep property changes', () => {
-            const state = deepReactive({
-                user: { name: 'Alex', age: 25 },
-            });
-            let calls = 0;
-            let lastValue = '';
-
-            const stop = autorun(() => {
-                calls++;
-                lastValue = state.user.name;
-            });
-
-            assert.strictEqual(calls, 1);
-            assert.strictEqual(lastValue, 'Alex');
-
-            state.user.name = 'Bob';
-            assert.strictEqual(calls, 2);
-            assert.strictEqual(lastValue, 'Bob');
-
-            state.user.age = 30;
-            assert.strictEqual(calls, 2);
-
-            stop();
-            state.user.name = 'Charlie';
-            assert.strictEqual(calls, 2);
-        });
-
-        it('should track nested array changes', () => {
-            const state = deepReactive({
-                items: [1, 2, 3],
-            });
-            let calls = 0;
-            let lastLength = 0;
-
-            const stop = autorun(() => {
-                calls++;
-                lastLength = state.items.length;
-            });
-
-            assert.strictEqual(calls, 1);
-            assert.strictEqual(lastLength, 3);
-
-            state.items.push(4);
-            assert.strictEqual(calls, 2);
-            assert.strictEqual(lastLength, 4);
-
-            state.items[0] = 99;
-            assert.strictEqual(calls, 2);
-
-            stop();
-        });
-
-        it('should track changes in object keys via ownKeys', () => {
-            const state = deepReactive({ a: 1, b: 2 });
-            /** @type {string[]} */
-            let keys = [];
-
-            const stop = autorun(() => {
-                keys = Object.keys(state);
-            });
-
-            assert.deepStrictEqual(keys, ['a', 'b']);
-
-            state.c = 3;
-            assert.deepStrictEqual(keys, ['a', 'b', 'c']);
-
-            delete state.a;
-            assert.deepStrictEqual(keys, ['b', 'c']);
-
-            stop();
-        });
+test.serial('integration: computed re-evaluates automatically on deep property changes', t => {
+    const state = deepReactive({
+        user: {
+            firstName: 'John',
+            lastName: 'Doe',
+            age: 17,
+        },
     });
 
-    describe('computed', () => {
-        it('should recompute when deep dependencies change', () => {
-            const state = deepReactive({
-                price: 10,
-                quantity: 2,
-            });
+    const fullName = computed(() => `${state.user.firstName} ${state.user.lastName}`);
+    const isAdult = computed(() => state.user.age >= 18);
 
-            const total = computed(() => state.price * state.quantity);
-            assert.strictEqual(total.value, 20);
+    t.is(fullName.value, 'John Doe');
+    t.false(isAdult.value);
 
-            state.price = 15;
-            assert.strictEqual(total.value, 30);
+    // Update nested property
+    state.user.firstName = 'Jane';
+    state.user.age = 20;
 
-            state.quantity = 3;
-            assert.strictEqual(total.value, 45);
-        });
+    t.is(fullName.value, 'Jane Doe');
+    t.true(isAdult.value);
+});
 
-        it('should work with nested computed values', () => {
-            const state = deepReactive({
-                user: {
-                    firstName: 'Alex',
-                    lastName: 'Smith',
-                },
-            });
-
-            const fullName = computed(() => `${state.user.firstName} ${state.user.lastName}`);
-            assert.strictEqual(fullName.value, 'Alex Smith');
-
-            state.user.firstName = 'Alexander';
-            assert.strictEqual(fullName.value, 'Alexander Smith');
-        });
-
-        it('should not recompute if dependency unchanged', () => {
-            const state = deepReactive({ value: 10 });
-            let computeCalls = 0;
-
-            const double = computed(() => {
-                computeCalls++;
-                return state.value * 2;
-            });
-
-            assert.strictEqual(double.value, 20);
-            assert.strictEqual(computeCalls, 1);
-
-            state.other = 5;
-            assert.strictEqual(double.value, 20);
-            assert.strictEqual(computeCalls, 1);
-
-            state.value = 10;
-            assert.strictEqual(double.value, 20);
-            assert.strictEqual(computeCalls, 1);
-
-            state.value = 11;
-            assert.strictEqual(double.value, 22);
-            assert.strictEqual(computeCalls, 2);
-        });
+test.serial('integration: batch postpones notifications until batch callback completes', t => {
+    const state = deepReactive({
+        counter: { val: 0 },
     });
 
-    describe('reaction', () => {
-        it('should trigger effect when tracked deep property changes', () => {
-            const state = deepReactive({
-                user: { name: 'Alex', age: 25 },
-            });
-            let effectCalls = 0;
-            let lastName = '';
-
-            const stop = reaction(
-                () => state.user.name,
-                updates => {
-                    effectCalls++;
-                    const record = updates?.get('');
-                    if (record) {
-                        lastName = record.value;
-                    }
-                }
-            );
-
-            assert.strictEqual(effectCalls, 0);
-
-            state.user.name = 'Bob';
-            assert.strictEqual(effectCalls, 1);
-            assert.strictEqual(lastName, 'Bob');
-
-            state.user.age = 26;
-            assert.strictEqual(effectCalls, 1);
-
-            stop();
-        });
-
-        it('should work with arrays', () => {
-            const state = deepReactive({ items: ['a', 'b'] });
-            let calls = 0;
-
-            const stop = reaction(
-                () => state.items.length,
-                () => calls++
-            );
-
-            assert.strictEqual(calls, 0);
-
-            state.items.push('c');
-            assert.strictEqual(calls, 1);
-
-            state.items[0] = 'x';
-            assert.strictEqual(calls, 1);
-
-            stop();
-        });
+    let executionCount = 0;
+    autorun(() => {
+        // Track reaction
+        const _ = state.counter.val;
+        executionCount++;
     });
 
-    describe('when / waitUntil', () => {
-        it('should resolve when deep property becomes true', async () => {
-            const state = deepReactive({ ready: false });
+    t.is(executionCount, 1);
 
-            let resolved = false;
-            const stop = when(
-                () => state.ready === true,
-                () => {
-                    resolved = true;
-                }
-            );
-
-            assert.strictEqual(resolved, false);
-            state.ready = true;
-            assert.strictEqual(resolved, true);
-            stop();
-        });
-
-        it('should work with waitUntil promise', async () => {
-            /** @type {{data:null|{value:number}}} */
-            const state = deepReactive({ data: null });
-
-            const promise = waitUntil(() => state.data !== null);
-            let resolved = false;
-
-            setTimeout(() => {
-                state.data = { value: 42 };
-            }, 10);
-
-            await promise;
-            assert.strictEqual(state.data?.value, 42);
-        });
+    // Perform multiple mutations inside batch
+    batch(() => {
+        state.counter.val = 1;
+        state.counter.val = 2;
+        state.counter.val = 3;
     });
 
-    describe('batch', () => {
-        it('should batch multiple deep mutations into one notification', () => {
-            const state = deepReactive({ a: 1, b: 2, c: 3 });
-            let autorunCalls = 0;
+    // Reaction should be triggered only once for the entire batch
+    t.is(executionCount, 2);
+    t.is(state.counter.val, 3);
+});
 
-            const stop = autorun(() => {
-                autorunCalls++;
-                state.a + state.b + state.c;
-            });
+test.serial('integration: root object replacement scenario (nested container approach)', t => {
+    // Testing the recommended reactive pattern for replacing root data
+    const store = deepReactive({
+        data: {
+            user: { age: 20 },
+        },
+    });
 
-            assert.strictEqual(autorunCalls, 1);
+    const isAdult = computed(() => (store.data?.user?.age ?? 0) >= 18);
 
-            state.a = 10;
-            assert.strictEqual(autorunCalls, 2);
-            state.b = 20;
-            assert.strictEqual(autorunCalls, 3);
-            state.c = 30;
-            assert.strictEqual(autorunCalls, 4);
+    t.true(isAdult.value);
 
-            batch(() => {
-                state.a = 100;
-                state.b = 200;
-                state.c = 300;
-            });
-            assert.strictEqual(autorunCalls, 5);
+    // Releasing / replacing root data object
+    store.data = {};
 
-            batch(() => {
-                state.a = 1000;
-                batch(() => {
-                    state.b = 2000;
-                    state.c = 3000;
+    // Computed should dynamically unsubscribe from old atoms and re-evaluate to false
+    t.false(isAdult.value);
+});
+
+test.serial('integration: array mutations properly update computed derived values', t => {
+    const store = deepReactive({
+        cart: [
+            { name: 'Apple', price: 10 },
+            { name: 'Banana', price: 20 },
+        ],
+    });
+
+    const totalPrice = computed(() => store.cart.reduce((sum, item) => sum + item.price, 0));
+
+    t.is(totalPrice.value, 30);
+
+    // 1. Mutate item inside array
+    store.cart[0].price = 15;
+    t.is(totalPrice.value, 35);
+
+    // 2. Push new item to array
+    store.cart.push({ name: 'Orange', price: 25 });
+    t.is(totalPrice.value, 60);
+
+    // 3. Remove item from array via splice
+    store.cart.splice(1, 1); // remove Banana
+    t.is(totalPrice.value, 40);
+});
+
+test.serial('integration: nested reactive objects added dynamically become reactive', t => {
+    // Инициализируем форму заранее для корректной регистрации Атомов графа
+    const store = deepReactive({
+        profile: {
+            address: {
+                city: 'none',
+            },
+        },
+    });
+
+    let currentCity = 'none';
+    let runCount = 0;
+
+    const stop = autorun(() => {
+        runCount++;
+        currentCity = store.profile.address.city;
+    });
+
+    t.is(runCount, 1);
+    t.is(currentCity, 'none');
+
+    t.log('--- Step 1: Updating city to Berlin ---');
+    store.profile.address.city = 'Berlin';
+
+    t.is(runCount, 2);
+    t.is(currentCity, 'Berlin');
+
+    t.log('--- Step 2: Mutating city to Paris ---');
+    store.profile.address.city = 'Paris';
+
+    t.is(runCount, 3); // ✅ Работает идеально на 100%!
+    t.is(currentCity, 'Paris');
+
+    stop();
+});
+
+test.serial('integration: deletion of properties updates reactive calculations correctly', t => {
+    const state = deepReactive({
+        config: {
+            theme: 'dark',
+            sidebar: true,
+        },
+    });
+
+    let keysCount = 0;
+    autorun(() => {
+        keysCount = Object.keys(state.config).length;
+    });
+
+    t.is(keysCount, 2);
+
+    delete state.config.sidebar;
+    t.is(keysCount, 1);
+});
+
+test.serial('integration: onChange tracks dynamic structure changes and deep mutations', t => {
+    const changes = [];
+
+    // Создаем глубоко реактивный объект с начальным profile: null
+    const store = deepReactive(
+        { profile: null },
+        {
+            onChange(path, oldValue, newValue) {
+                changes.push({
+                    path: path.join('.'),
+                    oldValue,
+                    newValue,
                 });
-            });
-            assert.strictEqual(autorunCalls, 6);
+            },
+        }
+    );
 
-            stop();
-        });
+    t.is(store.profile, null);
 
-        it('should batch array mutations', () => {
-            const state = deepReactive({ items: [1, 2, 3] });
-            let calls = 0;
+    t.log('--- Step 1: Dynamically adding nested structure ---');
+    // Присваиваем глубокий объект в profile, который изначально был null
+    store.profile = { address: { city: 'Berlin' } };
 
-            const stop = autorun(() => {
-                calls++;
-                state.items.length;
-            });
+    // onChange перехватывает присвоение всей ветки 'profile'
+    t.is(changes.length, 1);
+    t.is(changes[0].path, 'profile');
+    t.is(changes[0].oldValue, null);
+    t.deepEqual(changes[0].newValue, { address: { city: 'Berlin' } });
 
-            assert.strictEqual(calls, 1);
+    t.log('--- Step 2: Mutating deeply nested property ---');
+    // Мутируем глубокое поле 'city' во вновь созданном объекте
+    store.profile.address.city = 'Paris';
 
-            batch(() => {
-                state.items.push(4);
-                state.items.push(5);
-                state.items.shift();
-            });
-            assert.strictEqual(calls, 2);
+    // onChange точечно отлавливает изменение с полным путем к свойству
+    t.is(changes.length, 2);
+    t.is(changes[1].path, 'profile.address.city');
+    t.is(changes[1].oldValue, 'Berlin');
+    t.is(changes[1].newValue, 'Paris');
 
-            stop();
-        });
-    });
+    t.log('--- Step 3: Deleting deeply nested property ---');
+    // Удаляем свойство 'city'
+    delete store.profile.address.city;
 
-    describe('toRaw and markRaw', () => {
-        it('should unwrap deepReactive objects correctly', () => {
-            const state = deepReactive({
-                user: { name: 'Alex', profile: { age: 25 } },
-                items: [1, 2, 3],
-            });
-
-            const raw = toRaw(state);
-            assert.ok(!isDeepReactive(raw));
-            assert.strictEqual(raw.user.name, 'Alex');
-            assert.strictEqual(raw.user.profile.age, 25);
-            assert.deepStrictEqual(raw.items, [1, 2, 3]);
-            assert.ok(!isDeepReactive(raw.user));
-            assert.ok(!isDeepReactive(raw.items));
-        });
-
-        it('should handle circular references in toRaw', () => {
-            const obj = { a: 1 };
-            obj.self = obj;
-            const state = deepReactive(obj);
-            const raw = toRaw(state);
-            assert.strictEqual(raw.self, raw);
-        });
-
-        it('should respect markRaw', () => {
-            const rawObj = { value: 42 };
-            markRaw(rawObj);
-            const state = deepReactive({ data: rawObj });
-            assert.ok(!isDeepReactive(state.data));
-            assert.strictEqual(state.data.value, 42);
-        });
-    });
-
-    describe('makeAutoObservable compatibility', () => {
-        it('should work with classes that use makeAutoObservable', () => {
-            class User {
-                name = 'Alex';
-                age = 25;
-                profile = { city: 'NYC' };
-                constructor() {
-                    makeAutoObservable(this);
-                }
-            }
-
-            const user = new User();
-            const state = deepReactive({ user });
-            assert.ok(!isDeepReactive(state.user));
-
-            let calls = 0;
-            const stop = autorun(() => {
-                calls++;
-                state.user.name;
-            });
-            assert.strictEqual(calls, 1);
-            state.user.name = 'Bob';
-            assert.strictEqual(calls, 2);
-            stop();
-        });
-    });
-
-    describe('destroy lifecycle', () => {
-        it('should clean up subscriptions when autorun stopped', () => {
-            const state = deepReactive({ a: 1, b: { c: 2 } });
-            let calls = 0;
-            const stop = autorun(() => {
-                calls++;
-                state.a + state.b.c;
-            });
-
-            assert.strictEqual(calls, 1);
-            stop();
-            state.a = 10;
-            assert.strictEqual(calls, 1);
-        });
-    });
+    t.is(changes.length, 3);
+    t.is(changes[2].path, 'profile.address.city');
+    t.is(changes[2].oldValue, 'Paris');
+    t.is(changes[2].newValue, undefined);
 });

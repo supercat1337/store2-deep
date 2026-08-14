@@ -54,7 +54,7 @@ export function getAtomsMap(target) {
 export function getAtom(target, prop, create = false) {
     const map = objectAtoms.get(target);
     if (!map) {
-        if (!create) return null;
+        if (!create) {return null;}
         const newMap = new Map();
         objectAtoms.set(target, newMap);
         return createAtomForProp(target, prop, newMap);
@@ -74,6 +74,7 @@ export function getAtom(target, prop, create = false) {
  * @returns {import('@supercat1337/store2').Atom<any>}
  */
 function createAtomForProp(target, prop, map) {
+    // @ts-ignore
     const value = target[prop];
     const newAtom = atom(value);
     map.set(prop, newAtom);

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Todo Deep – store2-deep</title>
+        <link rel="stylesheet" href="../../styles/demo.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h2>Todo (Deep)</h2>
+            <p>Reactive todo list with deeply nested items and computed filters.</p>
+
+            <div class="todo-form">
+                <input type="text" id="new-todo-input" placeholder="What needs to be done?" />
+                <button id="add-todo-btn">Add</button>
+            </div>
+
+            <div class="filters">
+                <button data-filter="all" class="active">All</button>
+                <button data-filter="active">Active</button>
+                <button data-filter="completed">Completed</button>
+            </div>
+
+            <ul id="todo-list">
+                <!-- Template: first <li> will be cloned for each item -->
+                <li>
+                    <input type="checkbox" class="todo-checkbox" />
+                    <span class="todo-text"></span>
+                    <span class="todo-id" style="color: #999; font-size: 0.8rem"></span>
+                    <button class="todo-delete">✕</button>
+                </li>
+            </ul>
+
+            <div class="todo-footer">
+                <span class="todo-stats" id="todo-stats">Total: 0 | Active: 0 | Done: 0</span>
+                <button id="clear-completed-btn" class="secondary">Clear Completed</button>
+            </div>
+
+            <p><a href="../../index.html">← Back</a></p>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@supercat1337/store2": "../../../node_modules/@supercat1337/store2/dist/store2.esm.bundle.min.js",
+                    "@supercat1337/store2-dom": "../../../node_modules/@supercat1337/store2-dom/dist/store2-dom.esm.js",
+                    "@supercat1337/store2-deep": "../../../dist/store2-deep.esm.js"
+                }
+            }
+        </script>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

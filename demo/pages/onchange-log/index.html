@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>onChange Logging – store2-deep</title>
+        <link rel="stylesheet" href="../../styles/demo.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h2>onChange Logging</h2>
+            <p>Every mutation is logged via the <code>onChange</code> callback.</p>
+
+            <section>
+                <button id="change-name">Change Name</button>
+                <button id="change-age">Change Age</button>
+                <button id="add-address">Add Address</button>
+                <button id="delete-address">Delete Address</button>
+            </section>
+
+            <section>
+                <h3>Log</h3>
+                <pre id="log-output">Waiting for changes...</pre>
+            </section>
+
+            <p><a href="../../index.html">← Back</a></p>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@supercat1337/store2": "../../../node_modules/@supercat1337/store2/dist/store2.esm.bundle.min.js",
+                    "@supercat1337/store2-dom": "../../../node_modules/@supercat1337/store2-dom/dist/store2-dom.esm.js",
+                    "@supercat1337/store2-deep": "../../../dist/store2-deep.esm.js"
+                }
+            }
+        </script>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

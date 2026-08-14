@@ -46,7 +46,8 @@ export function toRaw(proxy, seen = new WeakSet()) {
                 if (isDeepReactive(value)) {
                     try {
                         raw[key] = toRaw(value, seen);
-                    } catch (_) {
+                    } catch (e) {
+                        console.error(e);
                         // If assignment fails (e.g., readonly property), skip silently.
                     }
                 }

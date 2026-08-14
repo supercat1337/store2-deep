@@ -31,33 +31,16 @@ npm install @supercat1337/store2-deep @supercat1337/store2
 
 ```js
 import { deepReactive } from '@supercat1337/store2-deep';
-import { autorun, batch } from '@supercat1337/store2';
+import { autorun } from '@supercat1337/store2';
 
-const state = deepReactive({
-    user: {
-        name: 'Alex',
-        tags: ['admin', 'dev'],
-    },
-    settings: {
-        theme: 'dark',
-    },
-});
+const state = deepReactive({ user: { name: 'Alex', age: 25 } });
 
+// Reactive effect automatically tracks state.user.name
 autorun(() => {
-    console.log(state.user.name, state.settings.theme);
+    console.log(`User name: ${state.user.name}`);
 });
-// Logs: "Alex dark"
 
-// Direct mutations — no immutable updates needed!
-state.user.name = 'Alexander'; // triggers autorun
-state.user.tags.push('lead'); // triggers autorun
-state.settings.theme = 'light'; // triggers autorun
-
-// Batch multiple changes
-batch(() => {
-    state.user.name = 'Sasha';
-    state.settings.theme = 'light';
-}); // single autorun execution
+state.user.name = 'Alexander'; // Logs: "User name: Alexander"
 ```
 
 ---
@@ -200,6 +183,74 @@ when(
 await waitUntil(() => state.data !== null);
 ```
 
+### Important: Dynamic Structures and Dependency Collection
+
+`autorun`, `computed` and `reaction` collect dependencies **only once** – during the first execution of the tracked function. If you access properties that do not exist at that moment (e.g., `state.profile?.address?.city` when `profile` is `null`), they **will not** be tracked. Later assignments to those properties will not trigger updates.
+
+**Recommendations:**
+
+- **Stable shape** – initialise all levels even with `null`/`undefined` to ensure all atoms exist from the start.
+- **Dynamic shape** – use the `onChange` callback to react to mutations when the structure is unknown or changes at runtime.
+
+For more details, see the [full documentation on dynamic structures](https://www.google.com/search?q=./AI_DOCS.md%2344-dynamic-structures-static-dependency-collection-and-iterate-atom).
+
+---
+
+### Integration with store2-dom
+
+You can easily connect `deepReactive` state to the DOM using `@supercat1337/store2-dom`. The recommended pattern is:
+
+1. Create `computed` getters for each property you want to display.
+2. Use `bindToProperty` or `bindToText` to update the DOM when the computed value changes.
+3. For user input, listen to DOM events and mutate the proxy directly – no need to create `Atom` instances manually.
+
+**Example – two‑way binding with an input:**
+
+```js
+import { deepReactive } from '@supercat1337/store2-deep';
+import { bindToProperty } from '@supercat1337/store2-dom';
+import { computed } from '@supercat1337/store2';
+
+const state = deepReactive({
+    user: { name: 'Alice', age: 30 },
+});
+
+// Computed getter – reads from the proxy
+const nameComputed = computed(() => state.user.name);
+
+// Bind to input.value – updates DOM when state changes
+const input = document.getElementById('name');
+bindToProperty(input, nameComputed, 'value');
+
+// Write back to the proxy on user input
+input.addEventListener('input', () => {
+    state.user.name = input.value;
+});
+```
+
+> **⚠️ Important:** Two‑way bindings like `bindToInput`, `bindToCheckbox`, `bindToSelect`, etc. are designed for **`Atom` instances with a setter**. They **cannot** be used directly with `computed` or with deep reactive proxies.
+> For `deepReactive`, always follow the pattern shown above: `computed` + `bindToProperty` (or `bindToText`) + manual DOM events. This is the recommended and most reliable way.
+
+---
+
+### Array Interoperability
+
+Methods that read all elements (such as `.map()`, `.filter()`, `.indexOf()`, or `.forEach()`) automatically subscribe to all index atoms and the array `length`. Mutating methods (`.push()`, `.splice()`, `.sort()`, etc.) execute inside an automatic `batch()`.
+
+### Lifecycle & Memory Management
+
+Dispose of effects and bindings when components unmount:
+
+```js
+const stop = autorun(() => console.log(state.value));
+stop(); // Unsubscribe effect
+
+const unsub = bindToProperty(el, myComputed, 'value');
+unsub(); // Unsubscribe DOM binding
+```
+
+Nested reactive objects are held via `WeakMap` references and will be garbage‑collected automatically when deleted or reassigned to `null`.
+
 ---
 
 ## TypeScript
@@ -220,7 +271,8 @@ const state: DeepReactive<{ user: { name: string } }> = deepReactive({ user: { n
 - Reads track dependencies via `Engine` (same as `atom.value`).
 - Writes update the corresponding atom and notify dependents.
 - Arrays and their mutating methods (`push`, `pop`, `splice`, etc.) are intercepted for batch updates.
-- Structure changes (`delete`, new keys) are tracked via a special `ITERATE` atom.
+    > - **Structure & Key Changes**: Iterating over object keys (e.g., `Object.keys(proxy)`, `for...in`) subscribes to a special per‑object `ITERATE` atom, triggering updates when keys are added or deleted.
+    > - **Granular Property Atoms**: Property reads lazily allocate an `Atom` for that specific key. Direct access to non‑existent dynamic keys requires initialising key placeholders or using `computed` iteration.
 
 For a deep dive into the internals, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 For LLM prompts, guidelines, and detailed pitfall prevention, see [`AI_DOCS.md`](./AI_DOCS.md).

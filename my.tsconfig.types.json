@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "resolveJsonModule": true,
+        "emitDeclarationOnly": true,
+        "declaration": true,
+        "outDir": "./dist/types-temp",
+        "rootDir": ".",
+        "moduleResolution": "NodeNext",
+        "module": "NodeNext",
+        "skipLibCheck": true,
+        "types": []
+    },
+    "include": ["src/types.d.ts", "src/index.js"],
+    "exclude": ["node_modules/*"]
+}

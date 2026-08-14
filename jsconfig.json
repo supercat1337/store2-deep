@@ -9,9 +9,8 @@
         "lib": ["DOM", "ES2020"],
         "moduleResolution": "NodeNext",
         "paths": {
-            "@supercat1337/store2-dom": ["./src/index.js"],
-            "@supercat1337/store2-dom/*": ["./src/*"],
-            "@/*": ["./src/*"]
+            "@supercat1337/store2-deep": ["./src/index.js"],
+            "@supercat1337/store2-deep/*": ["./src/*"]
         }
     },
     "include": ["src/**/*", "examples/**/*", "demo/**/*"],

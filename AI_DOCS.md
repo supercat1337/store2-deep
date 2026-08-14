@@ -19,12 +19,16 @@ Granular, mutable nested state with per‑property atoms and full integration wi
     - [4.1. `autorun`, `computed`, `reaction`](#41-autorun-computed-reaction)
     - [4.2. `batch`](#42-batch)
     - [4.3. `when` / `waitUntil`](#43-when--waituntil)
+    - [4.4. Dynamic Structures, Static Dependency Collection, and `ITERATE` Atom](#44-dynamic-structures-static-dependency-collection-and-iterate-atom)
+    - [4.5. DOM Binding with store2-dom (Best Practices)](#45-dom-binding-with-store2-dom-best-practices)
 5. [Internal Mechanics](#5-internal-mechanics)
     - [5.1. Per‑Property Atoms](#51-perproperty-atoms)
     - [5.2. Lazy Atom Creation](#52-lazy-atom-creation)
     - [5.3. Array Handling](#53-array-handling)
+        - [5.3.1. Working with Arrays & Methods](#531-working-with-arrays--methods)
     - [5.4. `onChange` Callback](#54-onchange-callback)
     - [5.5. `toRaw` and Read‑Only Properties](#55-toraw-and-readonly-properties)
+    - [5.6. Lifecycle & Cleanup](#56-lifecycle--cleanup)
 6. [Common Pitfalls for AI-Generated Code](#6-common-pitfalls-for-ai-generated-code)
 7. [TypeScript Support](#7-typescript-support)
 8. [License](#8-license)
@@ -172,6 +176,124 @@ when(
 await waitUntil(() => state.data !== null);
 ```
 
+### 4.4. Dynamic Structures, Static Dependency Collection, and `ITERATE` Atom
+
+`autorun`, `computed`, and `reaction` in `store2` collect dependencies **during execution** of the tracked function.
+
+#### How Key Set Changes are Tracked (`ITERATE` Atom)
+
+Changes to the set of keys (adding or deleting properties) are tracked when you **iterate** over an object (e.g., using `Object.keys()`, `Object.values()`, `Object.entries()`, or `for...in`). Internally, this registers a dependency on a special per‑object `ITERATE` atom.
+
+```js
+const state = deepReactive({ users: { alex: { age: 25 } } });
+
+// ✅ TRACKED via ITERATE atom:
+autorun(() => {
+    console.log('User list:', Object.keys(state.users));
+});
+
+state.users.bob = { age: 30 }; // ✅ Triggers autorun (logs: ['alex', 'bob'])
+delete state.users.alex; // ✅ Triggers autorun (logs: ['bob'])
+```
+
+#### Direct Access to Non‑existent Properties
+
+If you directly access a nested property that does not exist during the first run (e.g., using optional chaining `?.`), the engine cannot attach an Atom to that missing property.
+
+```js
+const state = deepReactive({ profile: null });
+
+autorun(() => {
+    // First run: profile is null, so address/city are never accessed
+    console.log(state.profile?.address?.city);
+});
+
+state.profile = { address: { city: 'Berlin' } }; // ✅ Triggers autorun (profile changed)
+state.profile.address.city = 'Paris'; // ❌ Will NOT trigger autorun!
+```
+
+#### Recommended Patterns for Dynamic Shapes
+
+**1. Preferred: Declarative iteration via `computed**`
+
+Wrap dynamic objects into a `computed` that iterates over keys or values:
+
+```js
+const state = deepReactive({ items: {} });
+
+const itemKeys = computed(() => Object.keys(state.items));
+
+autorun(() => {
+    console.log('Current keys:', itemKeys.value);
+});
+
+state.items.a = 1; // ✅ triggers autorun because `itemKeys` recomputes
+```
+
+**2. Pre‑initialise the shape**
+
+If the structure is known, initialise nested keys with `null` or `undefined` so their atoms are allocated eagerly:
+
+```js
+const state = deepReactive({
+    profile: { address: { city: null } },
+});
+// Now `state.profile.address.city` is tracked from the start
+```
+
+**3. Use `onChange` for imperative side‑effects**
+
+Use `onChange` for logging, persistence, or external synchronization, rather than as a replacement for UI reactivity:
+
+```js
+const state = deepReactive(
+    { profile: null },
+    {
+        onChange(path, oldValue, newValue) {
+            console.log(`Mutation at ${path.join('.')}:`, newValue);
+        },
+    }
+);
+```
+
+### 4.5. DOM Binding with store2-dom (Best Practices)
+
+`deepReactive` proxies use `Proxy` traps rather than direct `Atom` setters. Therefore, **two‑way bindings like `bindToInput`, `bindToCheckbox`, or `bindToSelect` do NOT work directly with `deepReactive` properties or `computed` getters**.
+
+If you attempt to pass a `computed` or a deep property to `bindToInput`, you will encounter errors because the binding cannot update the reactive item.
+
+**The Recommended Pattern:**
+
+1. Create a `computed` getter for reading state.
+2. Bind state to DOM via `bindToProperty` or `bindToText`.
+3. Handle DOM events manually to write updates back to the proxy.
+
+```js
+import { deepReactive } from '@supercat1337/store2-deep';
+import { bindToProperty } from '@supercat1337/store2-dom';
+import { computed } from '@supercat1337/store2';
+
+const state = deepReactive({ user: { name: 'Alex' } });
+const nameComputed = computed(() => state.user.name);
+const input = document.getElementById('name');
+
+// State → DOM
+bindToProperty(input, nameComputed, 'value');
+
+// DOM → State
+input.addEventListener('input', () => {
+    state.user.name = input.value;
+});
+```
+
+**Why this pattern is safe and recommended:**
+
+- `bindToInput` expects an `Atom` with a setter. `computed` is read‑only, so `bindToInput` cannot update it.
+- It keeps the data flow explicit and unidirectional (state → DOM via computed, DOM → State via events).
+- It avoids accidental infinite update loops and works reliably with `autoDisconnect` and `AbortSignal`.
+
+> **⚠️ Important:** Do **not** attempt to synchronise an `Atom` with a deep reactive property using `reaction` or `autorun` in both directions – this is error‑prone and may cause update loops.
+
 ---
 
 ## 5. Internal Mechanics
@@ -187,14 +309,17 @@ Each property of a deep‑reactive object is backed by its own `Atom` from `stor
 
 Atoms are created **lazily** – only when a property is first accessed. This avoids upfront allocation for properties that are never used reactively.
 
-### 5.3. Array Handling
+### 5.3. Array Handling & Methods
 
-Arrays are fully supported with special handling for mutating methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `fill`, `copyWithin`):
+Arrays are fully supported with special handling for mutating methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `fill`, `copyWithin`) and reading methods:
 
-- **Pre‑mutation state** – saves `oldLength` and a shallow copy of values.
-- **Batched updates** – all atom updates (indices and length) are wrapped in a single `batch()` call.
-- **Order‑changing methods** – `sort` and `reverse` force updates for all indices, even if values are equal, to correctly propagate order changes.
-- **Removed indices** – when length decreases, atoms for removed indices are destroyed and `onChange` is called with `newValue = undefined`.
+- **Index Access (`state.items[0]`)** – Subscribes the current effect specifically to index `0`.
+- **Length Access (`state.items.length`)** – Subscribes specifically to array length changes.
+- **Iteration Methods (`map`, `filter`, `forEach`, `reduce`, `find`, `includes`, `indexOf`)** – Since these methods read every element and the `length` property, calling them inside `autorun` or `computed` automatically subscribes the effect to **all index atoms** and the **length atom**.
+- **Mutating Methods**:
+- Executed inside an internal `batch()` so subscribers are notified once per method call.
+- `sort` and `reverse` invalidate all index atoms to ensure subscriber recalculation regardless of value equality.
+- Decreasing array length disposes removed index atoms and triggers `onChange` with `newValue = undefined`.
 
 ### 5.4. `onChange` Callback
 
@@ -208,19 +333,49 @@ The `onChange` callback is invoked on:
 
 `toRaw` unwraps nested proxies recursively. It checks property descriptors to avoid modifying read‑only properties (getters without setters) and gracefully skips them.
 
+### 5.6. Lifecycle & Cleanup
+
+To prevent memory leaks, always clean up reactive subscriptions when components or modules unmount.
+
+```js
+import { autorun, reaction, computed } from '@supercat1337/store2';
+import { bindToProperty } from '@supercat1337/store2-dom';
+
+// 1. autorun / reaction return a disposer function
+const stopAutorun = autorun(() => console.log(state.user.name));
+const stopReaction = reaction(
+    () => state.user.name,
+    name => console.log(name)
+);
+
+// Unmount / Cleanup:
+stopAutorun();
+stopReaction();
+
+// 2. store2-dom bindings return an unsubscribe function
+const unsub = bindToProperty(inputElement, nameComputed, 'value');
+unsub(); // Removes DOM listener and unsubscribes from computed
+
+// 3. Garbage Collection for deepReactive
+// Memory for inner atoms is managed via WeakMap.
+// Deleting properties (`delete state.user`) or assigning `null` allows unreferenced
+// nested proxies and their associated atoms to be garbage-collected automatically.
+```
+
 ---
 
 ## 6. Common Pitfalls for AI-Generated Code
 
 1. **Mutating raw objects** – always mutate the **proxy**, not the raw object. Use the proxy returned by `deepReactive`.
 
-2. **Destructuring** – avoid destructuring reactive properties inside `autorun`/`computed`:
+2. **Destructuring Proxy Properties** – destructuring extracts the raw underlying value at execution time, severing the Proxy getter hook:
 
     ```js
-    // ❌
+    // ❌ Destructuring breaks reactivity
     const { name } = state.user;
-    autorun(() => console.log(name)); // name is a static value, no reactivity
-    // ✅
+    autorun(() => console.log(name)); // name is static
+
+    // ✅ Always access properties through the reactive proxy
     autorun(() => console.log(state.user.name));
     ```
 
@@ -235,6 +390,18 @@ The `onChange` callback is invoked on:
 7. **Expecting `onChange` to fire for every nested property** – `onChange` fires only for **direct mutations** on the proxy. If you mutate a nested object through a reference (e.g., `state.user = newUser`), it fires for the `user` property, but not for individual fields inside `newUser` unless they were previously read in an effect.
 
 8. **Not cleaning up `autorun`/`reaction`** – always store the returned `stop` function and call it when the component/effect is destroyed to prevent memory leaks.
+
+9. **Using `bindToInput` with `computed` from `deepReactive`** –
+   ❌ `bindToInput(input, computed(() => state.user.name))` – throws an error because `computed` has no setter.
+   ✅ Use `bindToProperty(input, computed, 'value')` and handle input events manually.
+
+10. **Directly reading from `user` inside `reaction` without a getter** –
+    ❌ `reaction(() => user, ...)` – tracks the whole object, causing unnecessary updates.
+    ✅ `reaction(() => user.profile.name, ...)` – tracks only the specific property.
+
+11. **Assuming `autorun`/`computed` will pick up dynamically added properties** – dependencies are collected **once** on first run. If a property is `null`/`undefined` initially and later assigned an object, its nested properties will not be tracked. Use `onChange` for fully dynamic structures, or pre‑initialise the shape.
+
+12. **Using two‑way DOM bindings (`bindToInput`, `bindToCheckbox`, etc.) with `computed` or `deepReactive`** – these bindings expect a mutable `Atom` with a setter. Passing a `computed` or a deep property will throw an error or fail silently. Always use `bindToProperty` (or `bindToText`) and manual event listeners for `deepReactive`.
 
 ---
 

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Deep Form – store2-deep</title>
+        <link rel="stylesheet" href="../../styles/demo.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h2>Deep Form</h2>
+            <p>Two‑way binding with deeply nested state.</p>
+
+            <section>
+                <div>
+                    <label>First name: <input type="text" id="firstName" /></label>
+                </div>
+                <div>
+                    <label>Last name: <input type="text" id="lastName" /></label>
+                </div>
+                <div>
+                    <label>City: <input type="text" id="city" /></label>
+                </div>
+                <div>
+                    <label>Age: <input type="number" id="age" /></label>
+                </div>
+            </section>
+
+            <section>
+                <h3>Preview</h3>
+                <pre id="preview"></pre>
+            </section>
+
+            <p><a href="../../index.html">← Back</a></p>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@supercat1337/store2": "../../../node_modules/@supercat1337/store2/dist/store2.esm.bundle.min.js",
+                    "@supercat1337/store2-dom": "../../../node_modules/@supercat1337/store2-dom/dist/store2-dom.esm.js",
+                    "@supercat1337/store2-deep": "../../../dist/store2-deep.esm.js"
+                }
+            }
+        </script>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

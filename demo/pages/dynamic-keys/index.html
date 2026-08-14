@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Dynamic Keys – store2-deep</title>
+        <link rel="stylesheet" href="../../styles/demo.css" />
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <h2>Dynamic Keys</h2>
+            <p>
+                Reactive iteration over dynamic object keys using <code>computed</code> +
+                <code>Object.keys</code>.
+            </p>
+
+            <section>
+                <div class="field-group">
+                    <label
+                        >Key:
+                        <input type="text" id="key-input" placeholder="e.g., 'apple'" />
+                    </label>
+                    <label
+                        >Value:
+                        <input type="text" id="value-input" placeholder="e.g., 'fruit'" />
+                    </label>
+                </div>
+                <div class="controls">
+                    <button id="add-btn">Add / Update</button>
+                    <button id="delete-btn" class="danger">Delete Selected</button>
+                </div>
+                <div class="field-group" style="margin-top: 0.75rem">
+                    <label
+                        >Select key:
+                        <select id="key-select"></select>
+                    </label>
+                </div>
+            </section>
+
+            <section>
+                <h3>State</h3>
+                <pre id="state-preview"></pre>
+            </section>
+
+            <p><a href="../../index.html">← Back</a></p>
+        </div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "@supercat1337/store2": "../../../node_modules/@supercat1337/store2/dist/store2.esm.bundle.min.js",
+                    "@supercat1337/store2-dom": "../../../node_modules/@supercat1337/store2-dom/dist/store2-dom.esm.js",
+                    "@supercat1337/store2-deep": "../../../dist/store2-deep.esm.js"
+                }
+            }
+        </script>
+        <script type="module" src="main.js"></script>
+    </body>
+</html>

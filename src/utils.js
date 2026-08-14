@@ -10,7 +10,7 @@
  * @returns {boolean} True if the value is a plain object.
  */
 export function isPlainObject(value) {
-    if (value === null || typeof value !== 'object') return false;
+    if (value === null || typeof value !== 'object') {return false;}
     const proto = Object.getPrototypeOf(value);
     return proto === Object.prototype || proto === null;
 }
@@ -31,8 +31,8 @@ export function isArray(value) {
  * @returns {boolean} True if the value should be proxied.
  */
 export function shouldProxy(value) {
-    if (value === null || typeof value !== 'object') return false;
-    if (isMarkedRaw(value)) return false;
+    if (value === null || typeof value !== 'object') {return false;}
+    if (isMarkedRaw(value)) {return false;}
     return isPlainObject(value) || isArray(value);
 }
 
