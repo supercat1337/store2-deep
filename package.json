@@ -1,6 +1,6 @@
 {
     "name": "@supercat1337/store2-deep",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Deep reactivity for @supercat1337/store2 — mutable nested state with granular updates",
     "type": "module",
     "main": "dist/store2-deep.esm.js",
@@ -35,7 +35,7 @@
     "devDependencies": {
         "@eslint/js": "^10.0.1",
         "@supercat1337/store2": "^2.0.10",
-        "@supercat1337/store2-dom": "^1.1.0",
+        "@supercat1337/store2-dom": "^1.2.0",
         "ava": "^6.1.2",
         "c8": "^12.0.0",
         "eslint": "^10.8.1",

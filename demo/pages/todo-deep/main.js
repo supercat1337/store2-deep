@@ -126,18 +126,12 @@ todoListEl.addEventListener('change', e => {
     }
 });
 
-// ─── bindToList ───────────────────────────────────────────────
+// ─── bindToList with explicit template ──────────────────────
 
-/**
- * Creates a new <li> element for a todo item from the template.
- * Event listeners are managed via delegation on the parent <ul> container.
- * @param {ListItemHelper} helper
- * @returns {HTMLElement}
- */
-function createTodoItem(helper) {
-    const template = helper.getTemplate();
-    if (!template) throw new Error('No template for todo list');
-    return template;
+// Get the template
+const templateEl = document.getElementById('todo-item-template');
+if (!(templateEl instanceof HTMLTemplateElement)) {
+    throw new Error('Template not found');
 }
 
 /**
@@ -146,7 +140,6 @@ function createTodoItem(helper) {
  * @param {ListItemUpdateContext<Todo>} details
  */
 function updateTodoItem(helper, details) {
-    // 1. Защитная проверка: если данных нет, ничего не обновляем
     if (!details || !details.value) return;
 
     const li = details.itemElement;
@@ -154,7 +147,6 @@ function updateTodoItem(helper, details) {
     // Attach dataset ID to enable event delegation matching
     li.dataset.id = String(details.value.id);
 
-    // Use getElement with type and root for type-safe element access
     const checkbox = getElement('.todo-checkbox', HTMLInputElement, li);
     const textSpan = getElement('.todo-text', HTMLSpanElement, li);
     const idSpan = getElement('.todo-id', HTMLSpanElement, li);
@@ -172,8 +164,13 @@ function updateTodoItem(helper, details) {
     }
 }
 
-// Bind the list
-bindToList(todoListEl, filteredTodos, updateTodoItem, createTodoItem, {
+// Bind the list with explicit template and key
+bindToList(todoListEl, filteredTodos, updateTodoItem, {
+    template: templateEl,
+    getKey: 'id', // enables key-based reconciliation
     debounceTime: 0,
     autoDisconnect: true,
+    onRemoveItem: (el, value, index) => {
+        console.log(`Removed todo: ${value.text}`);
+    },
 });

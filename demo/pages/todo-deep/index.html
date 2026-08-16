@@ -23,15 +23,8 @@
                 <button data-filter="completed">Completed</button>
             </div>
 
-            <ul id="todo-list">
-                <!-- Template: first <li> will be cloned for each item -->
-                <li>
-                    <input type="checkbox" class="todo-checkbox" />
-                    <span class="todo-text"></span>
-                    <span class="todo-id" style="color: #999; font-size: 0.8rem"></span>
-                    <button class="todo-delete">✕</button>
-                </li>
-            </ul>
+            <!-- List container (empty, template is defined below) -->
+            <ul id="todo-list"></ul>
 
             <div class="todo-footer">
                 <span class="todo-stats" id="todo-stats">Total: 0 | Active: 0 | Done: 0</span>
@@ -40,6 +33,16 @@
 
             <p><a href="../../index.html">← Back</a></p>
         </div>
+
+        <!-- Explicit template for todo items -->
+        <template id="todo-item-template">
+            <li>
+                <input type="checkbox" class="todo-checkbox" />
+                <span class="todo-text"></span>
+                <span class="todo-id" style="color: #999; font-size: 0.8rem"></span>
+                <button class="todo-delete">✕</button>
+            </li>
+        </template>
 
         <script type="importmap">
             {
