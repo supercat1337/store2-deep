@@ -178,7 +178,11 @@ await waitUntil(() => state.data !== null);
 
 ### 4.4. Dynamic Structures, Static Dependency Collection, and `ITERATE` Atom
 
-`autorun`, `computed`, and `reaction` in `store2` collect dependencies **during execution** of the tracked function.
+> By default, `autorun`, `computed` and `reaction` **re‑collect dependencies on every run** (the `recomputeDependencies` option is `true`).  
+> This means that if a property was not accessed during the first run (e.g., because a parent was `null`), it will be tracked as soon as it becomes available and is read in a subsequent run.  
+> If you need static dependency collection (like in MobX), set `{ recomputeDependencies: false }` – then dependencies are fixed at the first run and never updated.
+>
+> To track **addition or deletion of keys**, use iteration (`Object.keys`, `for...in`, etc.). This registers a dependency on the special `ITERATE` atom and causes the effect to re‑run when the set of keys changes.
 
 #### How Key Set Changes are Tracked (`ITERATE` Atom)
 
@@ -204,13 +208,15 @@ If you directly access a nested property that does not exist during the first ru
 const state = deepReactive({ profile: null });
 
 autorun(() => {
-    // First run: profile is null, so address/city are never accessed
     console.log(state.profile?.address?.city);
 });
 
 state.profile = { address: { city: 'Berlin' } }; // ✅ Triggers autorun (profile changed)
-state.profile.address.city = 'Paris'; // ❌ Will NOT trigger autorun!
+// Now `address` and `city` are read in the subsequent run and become tracked.
+state.profile.address.city = 'Paris'; // ✅ Now triggers autorun because city is now tracked
 ```
+
+> **Note:** If you never read a nested property (e.g., you only read `state.profile` without accessing `address` or `city`), then changes to `address.city` will not trigger the effect because those properties were never tracked. To track dynamic keys, use iteration or pre‑initialise the shape.
 
 #### Recommended Patterns for Dynamic Shapes
 
@@ -399,7 +405,7 @@ unsub(); // Removes DOM listener and unsubscribes from computed
     ❌ `reaction(() => user, ...)` – tracks the whole object, causing unnecessary updates.
     ✅ `reaction(() => user.profile.name, ...)` – tracks only the specific property.
 
-11. **Assuming `autorun`/`computed` will pick up dynamically added properties** – dependencies are collected **once** on first run. If a property is `null`/`undefined` initially and later assigned an object, its nested properties will not be tracked. Use `onChange` for fully dynamic structures, or pre‑initialise the shape.
+11. **Assuming `autorun`/`computed` will never pick up dynamically added properties** – by default, dependencies are re‑collected on every run. If a property was not accessed during the first run (e.g., because a parent was `null`), it will be tracked as soon as it becomes available and is read in a subsequent run. However, if you set `{ recomputeDependencies: false }`, dependencies are fixed at the first run and dynamic properties will not be tracked. Use `onChange` for fully dynamic structures, or pre‑initialise the shape.
 
 12. **Using two‑way DOM bindings (`bindToInput`, `bindToCheckbox`, etc.) with `computed` or `deepReactive`** – these bindings expect a mutable `Atom` with a setter. Passing a `computed` or a deep property will throw an error or fail silently. Always use `bindToProperty` (or `bindToText`) and manual event listeners for `deepReactive`.
 

@@ -174,21 +174,23 @@ test.serial('Using reaction for custom DOM updates (instead of bindToProperty)',
 
     let stopReaction;
 
-    // Reaction to update input.value with formatting
     stopReaction = reaction(
         () => state.user.name,
-        updates => {
-            input.value = updates?.get('')?.value.toUpperCase() || ''; // formatting
+        () => {
+            input.value = state.user.name.toUpperCase();
         }
     );
 
+    // reaction не выполняется сразу, поэтому значение не установлено
+    t.is(input.value, '');
+
+    // После изменения данных эффект срабатывает
     state.user.name = 'alex';
     t.is(input.value, 'ALEX');
 
     state.user.name = 'Bob';
     t.is(input.value, 'BOB');
 
-    // Cleanup
     stopReaction();
     input.remove();
     t.teardown(() => {
@@ -229,9 +231,9 @@ test.serial('markRaw prevents object from being proxied', t => {
 });
 
 // ------------------------------------------------------------------
-// 9. Dynamic structures and autorun (documentation pitfall)
+// 9. Dynamic structures and autorun (real behaviour)
 // ------------------------------------------------------------------
-test.serial('autorun does NOT track dynamically added nested properties', t => {
+test.serial('autorun tracks dynamically added nested properties after they become available', t => {
     const state = deepReactive({ profile: null });
     let city = 'unknown';
     let runCount = 0;
@@ -244,14 +246,15 @@ test.serial('autorun does NOT track dynamically added nested properties', t => {
     t.is(runCount, 1);
     t.is(city, 'none');
 
+    // Присваиваем объект – это вызывает перезапуск autorun
     state.profile = { address: { city: 'Berlin' } };
     t.is(runCount, 2);
     t.is(city, 'Berlin');
 
-    // This mutation will NOT trigger autorun because 'city' wasn't initially tracked
+    // Теперь city отслеживается, поэтому изменение вызовет ещё один перезапуск
     state.profile.address.city = 'Paris';
-    t.is(runCount, 2); // no change
-    t.is(city, 'Berlin'); // still Berlin
+    t.is(runCount, 3);
+    t.is(city, 'Paris');
 
     stop();
 });

@@ -310,4 +310,4 @@ This design ensures:
 - **Performance** – minimal overhead and efficient batching.
 - **Flexibility** – the `onChange` callback enables advanced use cases like persistence and debugging.
 
-For more details, refer to the source code and the AI documentation (`AI_DOCS.md`).
+For more details, refer to the source code and the AI documentation (`AGENTS.md`).

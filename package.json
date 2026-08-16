@@ -1,6 +1,6 @@
 {
     "name": "@supercat1337/store2-deep",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Deep reactivity for @supercat1337/store2 — mutable nested state with granular updates",
     "type": "module",
     "main": "dist/store2-deep.esm.js",
@@ -15,7 +15,7 @@
     "files": [
         "dist/",
         "README.md",
-        "AI_DOCS.md",
+        "AGENTS.md",
         "LICENSE"
     ],
     "sideEffects": false,
@@ -30,11 +30,11 @@
         "lint_fix": "npm run lint -- --fix"
     },
     "peerDependencies": {
-        "@supercat1337/store2": "^2.0.8"
+        "@supercat1337/store2": "^2.0.10"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "@supercat1337/store2": "^2.0.8",
+        "@supercat1337/store2": "^2.0.10",
         "@supercat1337/store2-dom": "^1.1.0",
         "ava": "^6.1.2",
         "c8": "^12.0.0",

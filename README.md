@@ -185,14 +185,18 @@ await waitUntil(() => state.data !== null);
 
 ### Important: Dynamic Structures and Dependency Collection
 
-`autorun`, `computed` and `reaction` collect dependencies **only once** – during the first execution of the tracked function. If you access properties that do not exist at that moment (e.g., `state.profile?.address?.city` when `profile` is `null`), they **will not** be tracked. Later assignments to those properties will not trigger updates.
+By default, `autorun`, `computed` and `reaction` **re‑collect dependencies on every run** (the `recomputeDependencies` option is `true`).  
+This means that if a property was not accessed during the first run (e.g., because a parent was `null`), it will be tracked as soon as it becomes available and is read in a subsequent run.  
+If you need static dependency collection (like in MobX), set `{ recomputeDependencies: false }` – then dependencies are fixed at the first run and never updated.
+
+To track **addition or deletion of keys** in an object, use iteration (`Object.keys`, `for...in`, etc.). This registers a dependency on the special `ITERATE` atom and causes the effect to re‑run when the set of keys changes.
 
 **Recommendations:**
 
 - **Stable shape** – initialise all levels even with `null`/`undefined` to ensure all atoms exist from the start.
-- **Dynamic shape** – use the `onChange` callback to react to mutations when the structure is unknown or changes at runtime.
+- **Dynamic shape** – use a `computed` that iterates over keys (`Object.keys(state.items)`) or use the `onChange` callback for imperative side‑effects when the structure is unknown or changes at runtime.
 
-For more details, see the [full documentation on dynamic structures](https://www.google.com/search?q=./AI_DOCS.md%2344-dynamic-structures-static-dependency-collection-and-iterate-atom).
+For more details, see the [full documentation on dynamic structures](./AGENTS.md#44-dynamic-structures-static-dependency-collection-and-iterate-atom).
 
 ---
 
@@ -275,7 +279,7 @@ const state: DeepReactive<{ user: { name: string } }> = deepReactive({ user: { n
     > - **Granular Property Atoms**: Property reads lazily allocate an `Atom` for that specific key. Direct access to non‑existent dynamic keys requires initialising key placeholders or using `computed` iteration.
 
 For a deep dive into the internals, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-For LLM prompts, guidelines, and detailed pitfall prevention, see [`AI_DOCS.md`](./AI_DOCS.md).
+For LLM prompts, guidelines, and detailed pitfall prevention, see [`AGENTS.md`](./AGENTS.md).
 
 ---
 
