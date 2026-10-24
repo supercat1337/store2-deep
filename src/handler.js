@@ -61,7 +61,7 @@ export function createHandler(path = [], options = {}) {
          */
         get(target, prop, receiver) {
             // Internal key to access raw object.
-            if (prop === '__v_raw') return target;
+            if (prop === '__v_raw') {return target;}
 
             // Intercept array mutating methods.
             if (

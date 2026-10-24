@@ -133,7 +133,9 @@ function createHandler(path = [], options = {}) {
      * @returns {any} The property value (or a proxy for nested objects/arrays).
      */
     get(target, prop, receiver) {
-      if (prop === "__v_raw") return target;
+      if (prop === "__v_raw") {
+        return target;
+      }
       if (Array.isArray(target) && typeof prop === "string" && mutatingMethods.includes(prop)) {
         return function(...args) {
           const oldLength = target.length;
