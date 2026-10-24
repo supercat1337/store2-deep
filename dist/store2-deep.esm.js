@@ -138,6 +138,8 @@ function isMarkedRaw(value) {
 
 /**
  * Checks if a value is a deep reactive proxy.
+ *
+ * @public
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a deep reactive proxy.
  */
@@ -147,13 +149,29 @@ function isDeepReactive(value) {
 
 /**
  * Returns the raw (unproxied) object from a deep reactive proxy.
+ *
  * Recursively unwraps nested proxies and handles circular references.
  * Safe for readonly properties, getters, and non-configurable descriptors.
+ * Non-reactive values are returned as-is.
+ *
+ * @public
  * @param {any} proxy - The deep reactive proxy.
- * @param {WeakSet<object>} [seen] - Internal set for circular reference detection.
  * @returns {any} The raw object.
  */
-function toRaw(proxy, seen = new WeakSet()) {
+function toRaw(proxy) {
+    return toRawInternal(proxy, new WeakSet());
+}
+
+/**
+ * Internal recursive implementation of {@link toRaw}.
+ *
+ * @internal
+ * @param {any} proxy - The proxy or value to unwrap.
+ * @param {WeakSet<object>} seen - Set of already visited raw objects.
+ *   Used to break circular references.
+ * @returns {any} The raw object.
+ */
+function toRawInternal(proxy, seen) {
     if (!isDeepReactive(proxy)) {
         return proxy;
     }
@@ -174,7 +192,7 @@ function toRaw(proxy, seen = new WeakSet()) {
                 const value = raw[key];
                 if (isDeepReactive(value)) {
                     try {
-                        raw[key] = toRaw(value, seen);
+                        raw[key] = toRawInternal(value, seen);
                     } catch (e) {
                         console.error(e);
                         // If assignment fails (e.g., readonly property), skip silently.
@@ -187,8 +205,10 @@ function toRaw(proxy, seen = new WeakSet()) {
 }
 
 /**
- * Marks an object as raw – it will not be proxied by deepReactive.
+ * Marks an object as raw – it will not be proxied by `deepReactive`.
  * Useful for external library instances, DOM elements, etc.
+ *
+ * @public
  * @param {object} target - The object to mark as raw.
  * @returns {object} The same object with a hidden `__v_skip` property.
  */
@@ -481,6 +501,10 @@ function createHandler(path = [], options = {}) {
 
 /**
  * Internal: creates a deep proxy for the given target, with caching.
+ * Returns the cached proxy if one already exists, or the raw object
+ * itself if it was marked via {@link markRaw}.
+ *
+ * @internal
  * @param {object|any[]} target - The target object or array.
  * @param {string[]} [path] - The path to the target (for debugging).
  * @param {import('./types.js').DeepReactiveOptions} [options] - Options for the reactive proxy.
@@ -491,7 +515,8 @@ function createDeepProxy(target, path = [], options = {}) {
         return target;
     }
     if (rawToProxy.has(target)) {
-        // @ts-ignore
+        // @ts-ignore — WeakMap#get returns `object | undefined`, but we know
+        // the key was set via `rawToProxy.set(target, proxy)` above.
         return rawToProxy.get(target);
     }
 
@@ -509,7 +534,14 @@ function createDeepProxy(target, path = [], options = {}) {
 }
 
 /**
- * Public API: creates a deeply reactive proxy for a plain object or array.
+ * Creates a deeply reactive proxy for a plain object or array.
+ *
+ * Every property of the returned proxy is backed by its own `Atom` from
+ * `@supercat1337/store2`, so only the exact paths read inside an `autorun`
+ * or `computed` trigger recomputation when they change. Nested plain objects
+ * and arrays are wrapped lazily on first access.
+ *
+ * @public
  * @template T
  * @param {T} target - The plain object or array to wrap.
  * @param {import('./types.js').DeepReactiveOptions} [options] - Optional configuration.
@@ -523,10 +555,11 @@ function deepReactive(target, options = {}) {
     if (!isPlainObject(target) && !isArray(target)) {
         throw new Error('deepReactive: target must be a plain object or array');
     }
-
-    return /** @type {import('./types.js').DeepReactive<T>} */ (
-        createDeepProxy(target, [], options)
-    );
+    // @ts-ignore — target is validated above; `createDeepProxy` is typed as
+    // returning `object` because it is also called internally on non-generic
+    // inputs. Narrowing to `DeepReactive<T>` is safe: the runtime guards
+    // ensure T is an object or array here.
+    return createDeepProxy(target, [], options);
 }
 
 export { deepReactive, isDeepReactive, markRaw, toRaw };

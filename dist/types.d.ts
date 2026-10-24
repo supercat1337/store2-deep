@@ -22,7 +22,14 @@ export declare type DeepReactive<T> = T extends object ? {
 } : T;
 
 /**
- * Public API: creates a deeply reactive proxy for a plain object or array.
+ * Creates a deeply reactive proxy for a plain object or array.
+ *
+ * Every property of the returned proxy is backed by its own `Atom` from
+ * `@supercat1337/store2`, so only the exact paths read inside an `autorun`
+ * or `computed` trigger recomputation when they change. Nested plain objects
+ * and arrays are wrapped lazily on first access.
+ *
+ * @public
  * @template T
  * @param {T} target - The plain object or array to wrap.
  * @param {import('./types.js').DeepReactiveOptions} [options] - Optional configuration.
@@ -51,14 +58,18 @@ export declare interface DeepReactiveOptions {
 
 /**
  * Checks if a value is a deep reactive proxy.
+ *
+ * @public
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a deep reactive proxy.
  */
 export declare function isDeepReactive(value: any): boolean;
 
 /**
- * Marks an object as raw – it will not be proxied by deepReactive.
+ * Marks an object as raw – it will not be proxied by `deepReactive`.
  * Useful for external library instances, DOM elements, etc.
+ *
+ * @public
  * @param {object} target - The object to mark as raw.
  * @returns {object} The same object with a hidden `__v_skip` property.
  */
@@ -66,12 +77,15 @@ export declare function markRaw(target: object): object;
 
 /**
  * Returns the raw (unproxied) object from a deep reactive proxy.
+ *
  * Recursively unwraps nested proxies and handles circular references.
  * Safe for readonly properties, getters, and non-configurable descriptors.
+ * Non-reactive values are returned as-is.
+ *
+ * @public
  * @param {any} proxy - The deep reactive proxy.
- * @param {WeakSet<object>} [seen] - Internal set for circular reference detection.
  * @returns {any} The raw object.
  */
-export declare function toRaw(proxy: any, seen?: WeakSet<object>): any;
+export declare function toRaw(proxy: any): any;
 
 export { }

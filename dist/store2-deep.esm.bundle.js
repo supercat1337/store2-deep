@@ -67,7 +67,10 @@ import { batch } from "@supercat1337/store2";
 function isDeepReactive(value) {
   return value !== null && typeof value === "object" && proxyToRaw.has(value);
 }
-function toRaw(proxy, seen = /* @__PURE__ */ new WeakSet()) {
+function toRaw(proxy) {
+  return toRawInternal(proxy, /* @__PURE__ */ new WeakSet());
+}
+function toRawInternal(proxy, seen) {
   if (!isDeepReactive(proxy)) {
     return proxy;
   }
@@ -83,7 +86,7 @@ function toRaw(proxy, seen = /* @__PURE__ */ new WeakSet()) {
         const value = raw[key];
         if (isDeepReactive(value)) {
           try {
-            raw[key] = toRaw(value, seen);
+            raw[key] = toRawInternal(value, seen);
           } catch (e) {
             console.error(e);
           }
@@ -332,10 +335,7 @@ function deepReactive(target, options = {}) {
   if (!isPlainObject(target) && !isArray(target)) {
     throw new Error("deepReactive: target must be a plain object or array");
   }
-  return (
-    /** @type {import('./types.js').DeepReactive<T>} */
-    createDeepProxy(target, [], options)
-  );
+  return createDeepProxy(target, [], options);
 }
 export {
   deepReactive,

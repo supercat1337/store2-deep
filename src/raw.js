@@ -9,6 +9,8 @@ import { isPlainObject, isArray } from './utils.js';
 
 /**
  * Checks if a value is a deep reactive proxy.
+ *
+ * @public
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a deep reactive proxy.
  */
@@ -18,13 +20,29 @@ export function isDeepReactive(value) {
 
 /**
  * Returns the raw (unproxied) object from a deep reactive proxy.
+ *
  * Recursively unwraps nested proxies and handles circular references.
  * Safe for readonly properties, getters, and non-configurable descriptors.
+ * Non-reactive values are returned as-is.
+ *
+ * @public
  * @param {any} proxy - The deep reactive proxy.
- * @param {WeakSet<object>} [seen] - Internal set for circular reference detection.
  * @returns {any} The raw object.
  */
-export function toRaw(proxy, seen = new WeakSet()) {
+export function toRaw(proxy) {
+    return toRawInternal(proxy, new WeakSet());
+}
+
+/**
+ * Internal recursive implementation of {@link toRaw}.
+ *
+ * @internal
+ * @param {any} proxy - The proxy or value to unwrap.
+ * @param {WeakSet<object>} seen - Set of already visited raw objects.
+ *   Used to break circular references.
+ * @returns {any} The raw object.
+ */
+function toRawInternal(proxy, seen) {
     if (!isDeepReactive(proxy)) {
         return proxy;
     }
@@ -45,7 +63,7 @@ export function toRaw(proxy, seen = new WeakSet()) {
                 const value = raw[key];
                 if (isDeepReactive(value)) {
                     try {
-                        raw[key] = toRaw(value, seen);
+                        raw[key] = toRawInternal(value, seen);
                     } catch (e) {
                         console.error(e);
                         // If assignment fails (e.g., readonly property), skip silently.
@@ -58,8 +76,10 @@ export function toRaw(proxy, seen = new WeakSet()) {
 }
 
 /**
- * Marks an object as raw – it will not be proxied by deepReactive.
+ * Marks an object as raw – it will not be proxied by `deepReactive`.
  * Useful for external library instances, DOM elements, etc.
+ *
+ * @public
  * @param {object} target - The object to mark as raw.
  * @returns {object} The same object with a hidden `__v_skip` property.
  */

@@ -26,6 +26,6 @@ export function isDeepReactive(value: any): boolean;
 export function markRaw(target: object): object;
 
 // @public
-export function toRaw(proxy: any, seen?: WeakSet<object>): any;
+export function toRaw(proxy: any): any;
 
 ```
