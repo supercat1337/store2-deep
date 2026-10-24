@@ -6,14 +6,17 @@
  *
  * @public
  */
-export type DeepReactive<T> = T extends object ? DeepReactiveProxy<T> : T;
-
-type DeepReactiveProxy<T> = {
-    [K in keyof T]: T[K] extends object ? DeepReactive<T[K]> : T[K];
-} & {
-    /** Raw (unproxied) object behind this proxy. @internal */
-    __v_raw: T;
-};
+export type DeepReactive<T> = T extends object
+    ? {
+          [K in keyof T]: T[K] extends object ? DeepReactive<T[K]> : T[K];
+      } & {
+          /**
+           * Raw (unproxied) object behind this proxy. Equivalent to
+           * calling {@link toRaw} on the proxy.
+           */
+          __v_raw: T;
+      }
+    : T;
 
 /**
  * Options for `deepReactive`.

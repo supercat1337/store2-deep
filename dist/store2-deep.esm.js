@@ -237,7 +237,7 @@ const proxyCache = new WeakMap();
 /**
  * Creates a Proxy handler for a deep reactive object.
  * @param {string[]} [path] - The path to the current object (for debugging and onChange).
- * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Options including onChange callback.
+ * @param {import('./types.js').DeepReactiveOptions} [options] - Options including onChange callback.
  * @returns {ProxyHandler<object>}
  */
 function createHandler(path = [], options = {}) {
@@ -293,13 +293,18 @@ function createHandler(path = [], options = {}) {
                         }
 
                         // 2. If length decreased, destroy atoms for removed indices
+                        //    We intentionally do NOT destroy their atoms: store2's
+                        //    destroy() tears down the whole engine graph, so any
+                        //    Computed that tracked this index during a previous run
+                        //    would be destroyed along with the atom. Setting .value
+                        //    to undefined keeps the atom alive, notifies dependents,
+                        //    and lets them re-collect their dependency set without
+                        //    the removed index.
                         if (newLength < oldLength) {
                             for (let i = newLength; i < oldLength; i++) {
                                 const atomRef = getAtom(target, String(i), false);
                                 if (atomRef) {
-                                    atomRef.destroy();
-                                    const map = objectAtoms.get(target);
-                                    if (map) map.delete(String(i));
+                                    atomRef.value = undefined;
                                 }
                                 if (onChange) {
                                     onChange([...path, String(i)], oldValues[i], undefined, target);
@@ -478,7 +483,7 @@ function createHandler(path = [], options = {}) {
  * Internal: creates a deep proxy for the given target, with caching.
  * @param {object|any[]} target - The target object or array.
  * @param {string[]} [path] - The path to the target (for debugging).
- * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Options for the reactive proxy.
+ * @param {import('./types.js').DeepReactiveOptions} [options] - Options for the reactive proxy.
  * @returns {object} The deep reactive proxy.
  */
 function createDeepProxy(target, path = [], options = {}) {
@@ -507,8 +512,8 @@ function createDeepProxy(target, path = [], options = {}) {
  * Public API: creates a deeply reactive proxy for a plain object or array.
  * @template T
  * @param {T} target - The plain object or array to wrap.
- * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Optional configuration.
- * @returns {T} The deep reactive proxy.
+ * @param {import('./types.js').DeepReactiveOptions} [options] - Optional configuration.
+ * @returns {import('./types.js').DeepReactive<T>} The deep reactive proxy.
  * @throws {Error} If the target is not a plain object or array.
  */
 function deepReactive(target, options = {}) {
@@ -518,8 +523,10 @@ function deepReactive(target, options = {}) {
     if (!isPlainObject(target) && !isArray(target)) {
         throw new Error('deepReactive: target must be a plain object or array');
     }
-    // @ts-ignore
-    return createDeepProxy(target, [], options);
+
+    return /** @type {import('./types.js').DeepReactive<T>} */ (
+        createDeepProxy(target, [], options)
+    );
 }
 
 export { deepReactive, isDeepReactive, markRaw, toRaw };

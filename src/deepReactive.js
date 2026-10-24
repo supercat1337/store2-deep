@@ -41,8 +41,8 @@ export function createDeepProxy(target, path = [], options = {}) {
  * Public API: creates a deeply reactive proxy for a plain object or array.
  * @template T
  * @param {T} target - The plain object or array to wrap.
- * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Optional configuration.
- * @returns {T} The deep reactive proxy.
+ * @param {import('./types.js').DeepReactiveOptions} [options] - Optional configuration.
+ * @returns {import('./types.js').DeepReactive<T>} The deep reactive proxy.
  * @throws {Error} If the target is not a plain object or array.
  */
 export function deepReactive(target, options = {}) {
@@ -52,6 +52,8 @@ export function deepReactive(target, options = {}) {
     if (!isPlainObject(target) && !isArray(target)) {
         throw new Error('deepReactive: target must be a plain object or array');
     }
-    // @ts-ignore
-    return createDeepProxy(target, [], options);
+
+    return /** @type {import('./types.js').DeepReactive<T>} */ (
+        createDeepProxy(target, [], options)
+    );
 }

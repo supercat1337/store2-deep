@@ -1,60 +1,69 @@
 /**
- * Type definitions for @supercat1337/store2-deep
+ * Deep reactivity for `@supercat1337/store2` — mutable nested state with
+ * granular, per-property updates.
+ *
+ * @packageDocumentation
  */
 
 /**
- * Deep reactive proxy type. It behaves like the original object but all nested
- * objects and arrays are also wrapped in proxies.
+ * Deep reactive proxy type. Behaves like the original object, but all nested
+ * objects and arrays are wrapped in proxies.
+ *
+ * @public
  */
-export type DeepReactive<T> = T extends object ? DeepReactiveProxy<T> : T;
-
-type DeepReactiveProxy<T> = {
+export declare type DeepReactive<T> = T extends object ? {
     [K in keyof T]: T[K] extends object ? DeepReactive<T[K]> : T[K];
 } & {
-    /** Internal: returns the raw (unproxied) object. */
-    __v_raw: T;
-};
-
-/**
- * Options for deepReactive.
- */
-export interface DeepReactiveOptions {
     /**
-     * Callback invoked when a property changes.
-     * @param path - The path to the changed property as an array of strings.
-     * @param oldValue - The previous value.
-     * @param newValue - The new value.
-     * @param target - The raw object that contains the property.
+     * Raw (unproxied) object behind this proxy. Equivalent to
+     * calling {@link toRaw} on the proxy.
      */
-    onChange?: (path: string[], oldValue: any, newValue: any, target: object) => void;
-}
+    __v_raw: T;
+} : T;
 
-/* From deepReactive.d.ts */
-/**
- * Internal: creates a deep proxy for the given target, with caching.
- * @param {object|any[]} target - The target object or array.
- * @param {string[]} [path] - The path to the target (for debugging).
- * @param {DeepReactiveOptions} [options] - Options for the reactive proxy.
- * @returns {object} The deep reactive proxy.
- */
-export function createDeepProxy(target: object | any[], path?: string[], options?: DeepReactiveOptions): object;
 /**
  * Public API: creates a deeply reactive proxy for a plain object or array.
  * @template T
  * @param {T} target - The plain object or array to wrap.
- * @param {DeepReactiveOptions} [options] - Optional configuration.
- * @returns {T} The deep reactive proxy.
+ * @param {import('./types.js').DeepReactiveOptions} [options] - Optional configuration.
+ * @returns {import('./types.js').DeepReactive<T>} The deep reactive proxy.
  * @throws {Error} If the target is not a plain object or array.
  */
-export function deepReactive<T>(target: T, options?: DeepReactiveOptions): T;
+export declare function deepReactive<T>(target: T, options?: DeepReactiveOptions): DeepReactive<T>;
 
-/* From raw.d.ts */
+/**
+ * Options for `deepReactive`.
+ *
+ * @public
+ */
+export declare interface DeepReactiveOptions {
+    /**
+     * Callback invoked on every mutation.
+     *
+     * @param path - Path to the changed property, as an array of strings
+     *   (e.g. `['user', 'name']`, or `['items', '0']` for array indices).
+     * @param oldValue - Previous value (`undefined` for new properties).
+     * @param newValue - New value (`undefined` on deletion).
+     * @param target - Raw object that contains the property.
+     */
+    onChange?: (path: string[], oldValue: any, newValue: any, target: object) => void;
+}
+
 /**
  * Checks if a value is a deep reactive proxy.
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a deep reactive proxy.
  */
-export function isDeepReactive(value: any): boolean;
+export declare function isDeepReactive(value: any): boolean;
+
+/**
+ * Marks an object as raw – it will not be proxied by deepReactive.
+ * Useful for external library instances, DOM elements, etc.
+ * @param {object} target - The object to mark as raw.
+ * @returns {object} The same object with a hidden `__v_skip` property.
+ */
+export declare function markRaw(target: object): object;
+
 /**
  * Returns the raw (unproxied) object from a deep reactive proxy.
  * Recursively unwraps nested proxies and handles circular references.
@@ -63,11 +72,6 @@ export function isDeepReactive(value: any): boolean;
  * @param {WeakSet<object>} [seen] - Internal set for circular reference detection.
  * @returns {any} The raw object.
  */
-export function toRaw(proxy: any, seen?: WeakSet<object>): any;
-/**
- * Marks an object as raw – it will not be proxied by deepReactive.
- * Useful for external library instances, DOM elements, etc.
- * @param {object} target - The object to mark as raw.
- * @returns {object} The same object with a hidden `__v_skip` property.
- */
-export function markRaw(target: object): object;
+export declare function toRaw(proxy: any, seen?: WeakSet<object>): any;
+
+export { }
