@@ -2,9 +2,10 @@
     "compilerOptions": {
         "allowJs": true,
         "checkJs": true,
-        "resolveJsonModule": true,
         "emitDeclarationOnly": true,
+        "stripInternal": true,
         "declaration": true,
+        "lib": ["es2022", "dom"],
         "outDir": "./dist/types-temp",
         "rootDir": ".",
         "moduleResolution": "NodeNext",
@@ -12,6 +13,6 @@
         "skipLibCheck": true,
         "types": []
     },
-    "include": ["src/types.d.ts", "src/index.js"],
-    "exclude": ["node_modules/*"]
+    "include": ["src/**/*.js"],
+    "exclude": ["node_modules/*", "tests/*"]
 }

@@ -208,7 +208,7 @@ After a mutating method:
     - Update its value.
     - Call `onChange` if provided (with old and new values).
 - **If `newLength < oldLength`**:
-    - For each removed index, destroy its atom and call `onChange` with `newValue = undefined`.
+    - For each removed index, set its atom's value to `undefined` and call `onChange` with `newValue = undefined`. Atoms are **not** destroyed: `store2`'s `destroy()` tears down the whole engine graph, which would cascade to any `Computed` that had tracked the index on a previous run.
 - **Update the `length` atom** with the new length and call `onChange` if changed.
 - **Notify iteration** (`notifyIterate`) to trigger any effects that depend on the array’s structure.
 

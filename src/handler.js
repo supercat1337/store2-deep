@@ -8,7 +8,7 @@
  */
 
 import { batch } from '@supercat1337/store2';
-import { getAtom, getIterateAtom, notifyIterate, objectAtoms } from './atomRegistry.js';
+import { getAtom, getIterateAtom, notifyIterate } from './atomRegistry.js';
 import { createDeepProxy } from './deepReactive.js';
 import { isDeepReactive } from './raw.js';
 import { isMarkedRaw, shouldProxy } from './utils.js';
@@ -44,7 +44,7 @@ const proxyCache = new WeakMap();
 /**
  * Creates a Proxy handler for a deep reactive object.
  * @param {string[]} [path] - The path to the current object (for debugging and onChange).
- * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Options including onChange callback.
+ * @param {import('./types.js').DeepReactiveOptions} [options] - Options including onChange callback.
  * @returns {ProxyHandler<object>}
  */
 export function createHandler(path = [], options = {}) {
@@ -100,13 +100,18 @@ export function createHandler(path = [], options = {}) {
                         }
 
                         // 2. If length decreased, destroy atoms for removed indices
+                        //    We intentionally do NOT destroy their atoms: store2's
+                        //    destroy() tears down the whole engine graph, so any
+                        //    Computed that tracked this index during a previous run
+                        //    would be destroyed along with the atom. Setting .value
+                        //    to undefined keeps the atom alive, notifies dependents,
+                        //    and lets them re-collect their dependency set without
+                        //    the removed index.
                         if (newLength < oldLength) {
                             for (let i = newLength; i < oldLength; i++) {
                                 const atomRef = getAtom(target, String(i), false);
                                 if (atomRef) {
-                                    atomRef.destroy();
-                                    const map = objectAtoms.get(target);
-                                    if (map) map.delete(String(i));
+                                    atomRef.value = undefined;
                                 }
                                 if (onChange) {
                                     onChange([...path, String(i)], oldValues[i], undefined, target);

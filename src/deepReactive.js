@@ -12,7 +12,7 @@ import { createHandler } from './handler.js';
  * Internal: creates a deep proxy for the given target, with caching.
  * @param {object|any[]} target - The target object or array.
  * @param {string[]} [path] - The path to the target (for debugging).
- * @param {import('./types.d.ts').DeepReactiveOptions} [options] - Options for the reactive proxy.
+ * @param {import('./types.js').DeepReactiveOptions} [options] - Options for the reactive proxy.
  * @returns {object} The deep reactive proxy.
  */
 export function createDeepProxy(target, path = [], options = {}) {

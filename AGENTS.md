@@ -325,7 +325,7 @@ Arrays are fully supported with special handling for mutating methods (`push`, `
 - **Mutating Methods**:
 - Executed inside an internal `batch()` so subscribers are notified once per method call.
 - `sort` and `reverse` invalidate all index atoms to ensure subscriber recalculation regardless of value equality.
-- Decreasing array length disposes removed index atoms and triggers `onChange` with `newValue = undefined`.
+- Decreasing array length sets removed index atoms to `undefined` (they are kept alive so that active `Computed`/reactions can survive the shrink and drop those indices from their dependency set on the next run) and triggers `onChange` with `newValue = undefined`.
 
 ### 5.4. `onChange` Callback
 
