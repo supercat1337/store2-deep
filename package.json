@@ -1,6 +1,6 @@
 {
     "name": "@supercat1337/store2-deep",
-    "version": "1.0.2",
+    "version": "1.1.0",
     "description": "Deep reactivity for @supercat1337/store2 — mutable nested state with granular updates.",
     "author": "Albert Bazaleev",
     "license": "MIT",
